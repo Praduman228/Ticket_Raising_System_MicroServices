@@ -1,59 +1,85 @@
-const  mongoose =require("mongoose");
+const mongoose = require("mongoose");
+const AutoIncrement = require("mongoose-sequence")(mongoose);
 
-const TicketSchema=mongoose.Schema({
-    ticketId:{
+const TicketSchema = mongoose.Schema({
+    ticketId: {
         type: String,
+        unique: true,
+    
+    },
+    priority: {
+        type: String,
+        enum: ["Low", "Medium", "High", "Critical"],
         required: true,
-        unique: true
+        default: "Low"
     },
-    priority:{
-        type: String,
-        enum: ["low", "medium", "high"],
-        required: true
-    },
-    userId:{
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true
+        ref: "User", // Assuming there's a User model
+        default: null
     },
-    name:{
+    name: {
+        type: String,
+        default: ""
+    },
+    email: {
+        type: String,
+        default: ""
+    },
+    website: {
+        type: String,
+        default: ""
+    },
+    subject: {
         type: String,
         required: true
     },
-    email:{
+    message: {
         type: String,
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ["Open", "In Progress", "Closed", "Resolved"],
         required: true,
-        unique: true
+        default: "Open"
     },
-    Website:{
+    groups: {
         type: String,
-        cnum:["www.techkisan.com","www.techkisan.in"],
+        enum: [
+            "Tech Support", "Marketing", "Sales", "Development", "Admins", 
+            "IT Supports", "HR", "Travel", "Payroll", "Pocket HRMS", "Reimbursements"
+        ],
         required: true
     },
-    subject:{
-        type: String,
-        required: true
-    },
-    message:{
-        type: String,
-        required: true
-    },
-    status:{
-        type: String,
-        enum: ["open", "in progress", "closed"],
-        required: true, 
-        default: "open"
-    },
+    attachFile: [{
+        data: Buffer,
+        filename: String,
+        contentType: String
+    }],
     createdAt: {
         type: Date,
         default: Date.now
     },
     closeAt: {
         type: Date,
-        default: Date.now
+        default: null
     },
-    AssignedTo: {
+    assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
-    },
-})
+        ref: "Employee", // Assuming there's an Employee model
+        default: null
+    }
+});
 
-module.exports= mongoose.model("Ticket", TicketSchema)
+TicketSchema.plugin(AutoIncrement, { inc_field: "ticketNumber", start_seq: 1 });
+
+// 🔥 Use a post-save hook to set ticketId after ticketNumber is generated
+TicketSchema.post("save", async function (doc) {
+    if (!doc.ticketId) {
+        doc.ticketId = `TKN-${String(doc.ticketNumber).padStart(5, "0")}`;
+        await doc.save(); // Save the updated ticket with ticketId
+    }
+});
+
+module.exports = mongoose.model("Ticket", TicketSchema);
